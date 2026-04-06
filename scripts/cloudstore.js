@@ -4,8 +4,11 @@ const CloudStore = {
 
     async init() {
         await FirebaseAuth.init();
-        FirebaseAuth.onAuthChange((user) => {
+        FirebaseAuth.onAuthChange(async (user) => {
             this.userId = user ? user.uid : null;
+            if (user) {
+                await this.loadAllData();
+            }
         });
         this.initialized = true;
     },
