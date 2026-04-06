@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Grove - 森林</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="styles/main.css">
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCivBtVjDFBCGwRiUyYYZ76M7KVE48eW7g",
+            authDomain: "focus-grove-7c33c.firebaseapp.com",
+            projectId: "focus-grove-7c33c",
+            storageBucket: "focus-grove-7c33c.firebasestorage.app",
+            messagingSenderId: "526265364451",
+            appId: "1:526265364451:web:bcbdfbcce83da4902d7ad6",
+            measurementId: "G-LRH075QJX3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        window.Firebase = {
+            app,
+            auth,
+            db,
+            onAuthStateChanged,
+            signInWithEmailAndPassword,
+            createUserWithEmailAndPassword,
+            signOut,
+            doc,
+            getDoc,
+            setDoc,
+            updateDoc
+        };
+
+        window.dispatchEvent(new Event('firebaseReady'));
+    </script>
+</head>
+<body>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 40 40" fill="none">
+                        <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2"/>
+                        <path d="M20 8 C20 8 12 16 12 22 C12 26 16 30 20 30 C24 30 28 26 28 22 C28 16 20 8 20 8Z" fill="currentColor" opacity="0.3"/>
+                        <path d="M20 12 L20 24 M16 18 L20 14 L24 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <span class="logo-text">Focus Grove</span>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-item active" data-view="timer">
+                    <i data-lucide="timer"></i>
+                    <span>专注</span>
+                </button>
+                <button class="nav-item" data-view="tasks">
+                    <i data-lucide="check-square"></i>
+                    <span>任务</span>
+                </button>
+                <button class="nav-item" data-view="garden">
+                    <i data-lucide="image"></i>
+                    <span>画廊</span>
+                </button>
+                <button class="nav-item" data-view="stats">
+                    <i data-lucide="bar-chart-3"></i>
+                    <span>统计</span>
+                </button>
+                <button class="nav-item" data-view="settings">
+                    <i data-lucide="settings"></i>
+                    <span>设置</span>
+                </button>
+            </nav>
+
+            <div class="streak-display">
+                <div class="streak-icon">
+                    <i data-lucide="flame"></i>
+                </div>
+                <div class="streak-info">
+                    <span class="streak-count" id="streakCount">0</span>
+                    <span class="streak-label">连续天数</span>
+                </div>
+            </div>
+
+            <div class="sidebar-achievements" id="sidebarAchievements">
+                <div class="achievements-header">
+                    <span class="achievements-title">成就</span>
+                </div>
+                <div class="achievements-list" id="achievementsList"></div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="view" id="timerView">
+                <div class="timer-container">
+                    <div class="mode-tabs">
+                        <button class="mode-tab active" data-mode="focus">专注</button>
+                        <button class="mode-tab" data-mode="break">休息</button>
+                    </div>
+
+                    <div class="timer-ring-container">
+                        <svg class="timer-ring" viewBox="0 0 280 280">
+                            <circle class="ring-bg" cx="140" cy="140" r="130"/>
+                            <circle class="ring-progress" cx="140" cy="140" r="130" id="timerProgress"/>
+                        </svg>
+                        <div class="timer-center">
+                            <div class="timer-display" id="timerDisplay">
+                                <div class="timer-digit-wrapper">
+                                    <div class="timer-digit" data-unit="minutes-tens" data-min="0" data-max="9" data-base="0">
+                                        <div class="digit-roller">
+                                            <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>
+                                            <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>
+                                            <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>
+                                            <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>
+                                        </div>
+                                    </div>
+                                    <div class="timer-digit" data-unit="minutes-ones" data-min="0" data-max="9" data-base="0">
+                                        <div class="digit-roller">
+                                            <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>
+                                            <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>
+                                            <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>
+                                            <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>
+                                        </div>
+                                    </div>
+                                    <span class="timer-separator">:</span>
+                                    <div class="timer-digit" data-unit="seconds-tens" data-min="0" data-max="5" data-base="0">
+                                        <div class="digit-roller">
+                                            <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+                                            <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+                                        </div>
+                                    </div>
+                                    <div class="timer-digit" data-unit="seconds-ones" data-min="0" data-max="9" data-base="0">
+                                        <div class="digit-roller">
+                                            <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>
+                                            <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>
+                                            <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>
+                                            <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="timer-mode-label" id="timerModeLabel">专注中</span>
+                                <div class="timer-edit-overlay" id="timerEditOverlay">
+                                    <input type="text" id="timerEditInput" maxlength="4" placeholder="0000">
+                                    <span class="timer-edit-hint">输入数字设置时间</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="timer-tomato-count">
+                        <span>今日番茄 <strong id="todayTomatoes">0</strong></span>
+                    </div>
+
+                    <div class="timer-controls">
+                        <button class="btn btn-ghost btn-icon" id="resetBtn" title="重置">
+                            <i data-lucide="rotate-ccw"></i>
+                        </button>
+                        <button class="btn btn-primary btn-large" id="startPauseBtn">
+                            <i data-lucide="play" id="playIcon"></i>
+                            <i data-lucide="pause" id="pauseIcon" style="display:none;"></i>
+                            <span id="startPauseText">开始</span>
+                        </button>
+                        <button class="btn btn-ghost btn-icon" id="endEarlyBtn" title="提前结束">
+                            <i data-lucide="check-circle"></i>
+                        </button>
+                        <button class="btn btn-ghost btn-icon" id="skipBtn" title="跳过">
+                            <i data-lucide="skip-forward"></i>
+                        </button>
+                    </div>
+
+                    <div class="music-section" id="musicSection">
+                        <button class="music-toggle" id="musicToggle" title="专注音乐">
+                            <i data-lucide="music" class="music-icon music-icon-idle"></i>
+                            <i data-lucide="music-2" class="music-icon music-icon-playing hidden"></i>
+                        </button>
+                    </div>
+
+                    <div class="task-link-section">
+                        <label class="task-link-label">关联任务</label>
+                        <div class="custom-select" id="taskLinkSelectWrapper">
+                            <button type="button" class="custom-select-trigger" id="taskLinkSelectBtn">
+                                <span class="custom-select-value">-- 不关联 --</span>
+                                <i data-lucide="chevron-down"></i>
+                            </button>
+                            <div class="custom-select-dropdown" id="taskLinkSelectDropdown">
+                                <div class="custom-select-option" data-value="">-- 不关联 --</div>
+                                <div class="custom-select-option" data-value="custom">+ 自定义专注...</div>
+                                <div class="custom-select-divider"></div>
+                                <div class="custom-select-options-list" id="taskLinkOptions"></div>
+                            </div>
+                        </div>
+                        <input type="text" class="task-link-custom hidden" id="customTaskInput" placeholder="输入自定义专注内容，回车确认">
+                    </div>
+                </div>
+
+                <div class="session-history">
+                    <h3>今日专注记录</h3>
+                    <div class="session-list" id="sessionList"></div>
+                </div>
+            </div>
+
+            <div class="view hidden" id="tasksView">
+                <div class="tasks-header">
+                    <h2>任务列表</h2>
+                    <div class="tasks-tabs">
+                        <button class="task-tab active" data-tab="todo">待完成</button>
+                        <button class="task-tab" data-tab="done">已完成</button>
+                        <button class="task-tab" data-tab="monthly">每月目标</button>
+                    </div>
+                </div>
+
+                <div class="task-input-container">
+                    <input type="text" class="task-input" id="taskInput" placeholder="添加新任务，回车确认...">
+                    <div class="custom-select small" id="taskDateSelectWrapper">
+                        <button type="button" class="custom-select-trigger" id="taskDateSelectBtn">
+                            <span class="custom-select-value">今天</span>
+                            <i data-lucide="chevron-down"></i>
+                        </button>
+                        <div class="custom-select-dropdown">
+                            <div class="custom-select-option" data-value="today">今天</div>
+                            <div class="custom-select-option" data-value="tomorrow">明天</div>
+                            <div class="custom-select-option" data-value="week">本周</div>
+                            <div class="custom-select-option" data-value="all">所有</div>
+                            <div class="custom-select-option" data-value="monthly">每月目标</div>
+                        </div>
+                    </div>
+                    <div class="custom-select small" id="taskCategorySelectWrapper">
+                        <button type="button" class="custom-select-trigger" id="taskCategorySelectBtn">
+                            <span class="custom-select-value" data-default="工作">工作</span>
+                            <i data-lucide="chevron-down"></i>
+                        </button>
+                        <div class="custom-select-dropdown">
+                            <div class="custom-select-option" data-value="work" data-color="#C45A4A">工作</div>
+                            <div class="custom-select-option" data-value="study" data-color="#4A8A4D">学习</div>
+                            <div class="custom-select-option" data-value="health" data-color="#B08A4A">健康</div>
+                            <div class="custom-select-option" data-value="sports" data-color="#3D7A4D">运动</div>
+                            <div class="custom-select-option" data-value="life" data-color="#5A8A5A">生活</div>
+                            <div class="custom-select-option" data-value="writing" data-color="#7A68AB">写作</div>
+                            <div class="custom-select-option" data-value="future" data-color="#4A8A8A">未来</div>
+                            <div class="custom-select-option" data-value="rest" data-color="#6A9A6A">休息</div>
+                        </div>
+                    </div>
+                    <div class="custom-select small" id="taskPrioritySelectWrapper">
+                        <button type="button" class="custom-select-trigger" id="taskPrioritySelectBtn">
+                            <span class="custom-select-value">中</span>
+                            <i data-lucide="chevron-down"></i>
+                        </button>
+                        <div class="custom-select-dropdown">
+                            <div class="custom-select-option" data-value="p1" data-color="#C45A4A">高</div>
+                            <div class="custom-select-option" data-value="p2" data-color="#B08A4A">中</div>
+                            <div class="custom-select-option" data-value="p3" data-color="#4A8A4D">低</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tasks-list" id="todoList"></div>
+                <div class="tasks-list hidden" id="doneList"></div>
+                <div class="tasks-list hidden" id="monthlyList"></div>
+            </div>
+
+            <div class="view hidden" id="gardenView">
+                <div class="gallery-header">
+                    <h2>画廊</h2>
+                    <p class="gallery-subtitle">每一次专注，都是解锁一幅作品</p>
+                </div>
+
+                <div class="gallery-skin-showcase" id="galleryShowcase"></div>
+
+                <div class="gallery-stats" id="galleryStats"></div>
+
+                <div class="gallery-container">
+                    <div class="gallery-grid" id="galleryGrid"></div>
+                </div>
+            </div>
+
+            <div class="view hidden" id="statsView">
+                <div class="stats-header">
+                    <h2>数据统计</h2>
+                    <div class="stats-tabs">
+                        <button class="stat-tab active" data-period="day">今日</button>
+                        <button class="stat-tab" data-period="week">本周</button>
+                        <button class="stat-tab" data-period="month">本月</button>
+                        <button class="stat-tab" data-period="year">本年</button>
+                    </div>
+                </div>
+
+                <div class="stats-cards">
+                    <div class="stat-card main">
+                        <span class="stat-value" id="statTomatoes">0</span>
+                        <span class="stat-label">番茄数</span>
+                        <span class="stat-trend" id="statTomatoesTrend"></span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="statFocusTime">0h</span>
+                        <span class="stat-label">专注时长</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="statTasks">0</span>
+                        <span class="stat-label">完成任务</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="statAvg">0</span>
+                        <span class="stat-label">日均番茄</span>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="chart-container">
+                        <h3>专注分布</h3>
+                        <div class="bar-chart" id="barChart"></div>
+                    </div>
+
+                    <div class="chart-container">
+                        <h3>任务分类</h3>
+                        <div class="pie-chart" id="pieChart"></div>
+                    </div>
+                </div>
+
+                <div class="calendar-section" id="calendarSection">
+                    <div class="calendar-header">
+                        <h3>专注日历</h3>
+                        <div class="calendar-controls">
+                            <div class="calendar-view-tabs">
+                                <button class="calendar-view-tab active" data-view="time">时长</button>
+                                <button class="calendar-view-tab" data-view="tasks">任务</button>
+                                <button class="calendar-view-tab" data-view="names">名称</button>
+                            </div>
+                            <div class="calendar-nav">
+                                <button class="calendar-nav-btn" id="calendarPrev">
+                                    <i data-lucide="chevron-left"></i>
+                                </button>
+                                <span class="calendar-month" id="calendarMonth"></span>
+                                <button class="calendar-nav-btn" id="calendarNext">
+                                    <i data-lucide="chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="calendar-grid" id="calendarGrid"></div>
+                </div>
+
+                <div class="calendar-modal hidden" id="calendarModal">
+                    <div class="calendar-modal-content">
+                        <div class="calendar-modal-header">
+                            <h3 id="calendarModalTitle"></h3>
+                            <button class="calendar-modal-close" id="calendarModalClose">
+                                <i data-lucide="x"></i>
+                            </button>
+                        </div>
+                        <div class="calendar-modal-body" id="calendarModalBody"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="view hidden" id="settingsView">
+                <div class="settings-header">
+                    <h2>设置</h2>
+                </div>
+
+                <div class="settings-section">
+                    <h3>提醒设置</h3>
+                    <div class="setting-item toggle-item">
+                        <label>声音提醒</label>
+                        <button class="toggle-btn active" id="soundToggle">
+                            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                        </button>
+                    </div>
+                    <div class="setting-item toggle-item">
+                        <label>浏览器通知</label>
+                        <button class="toggle-btn" id="notificationToggle">
+                            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>云端同步</h3>
+                    <div id="loginSection">
+                        <div class="setting-item">
+                            <label>邮箱</label>
+                            <input type="email" id="loginEmail" placeholder="your@email.com" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-secondary); color: var(--text);">
+                        </div>
+                        <div class="setting-item">
+                            <label>密码</label>
+                            <input type="password" id="loginPassword" placeholder="密码" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-secondary); color: var(--text);">
+                        </div>
+                        <div class="setting-item" style="gap: 8px; display: flex;">
+                            <button class="btn btn-primary" id="loginBtn" style="flex: 1;">
+                                登录
+                            </button>
+                            <button class="btn btn-secondary" id="registerBtn" style="flex: 1;">
+                                注册
+                            </button>
+                        </div>
+                        <div id="loginError" style="color: #ef4444; font-size: 0.875rem; margin-top: 8px; display: none;"></div>
+                    </div>
+                    <div id="userInfoSection" style="display: none;">
+                        <div class="setting-item">
+                            <label>同步状态</label>
+                            <span id="syncStatus">未连接</span>
+                        </div>
+                        <div class="setting-item">
+                            <button class="btn btn-primary" id="syncToCloudBtn">
+                                <i data-lucide="cloud-upload"></i>
+                                同步到云端
+                            </button>
+                        </div>
+                        <div class="setting-item">
+                            <button class="btn btn-secondary" id="logoutBtn">
+                                <i data-lucide="log-out"></i>
+                                退出登录
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>数据管理</h3>
+                    <div class="setting-item">
+                        <label>导出数据</label>
+                        <button class="btn btn-secondary" id="exportBtn">
+                            <i data-lucide="download"></i>
+                            导出 JSON
+                        </button>
+                    </div>
+                    <div class="setting-item">
+                        <label>导入数据</label>
+                        <input type="file" id="importFile" accept=".json" style="display:none;">
+                        <button class="btn btn-secondary" id="importBtn">
+                            <i data-lucide="upload"></i>
+                            导入
+                        </button>
+                    </div>
+                    <div class="setting-item">
+                        <label>清除所有数据</label>
+                        <button class="btn btn-danger" id="clearDataBtn">
+                            <i data-lucide="trash-2"></i>
+                            清除
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay hidden" id="editTaskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>编辑任务</h3>
+                <button class="modal-close" id="editTaskModalClose">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editTaskId">
+                <div class="form-group">
+                    <label>任务内容</label>
+                    <input type="text" class="form-input" id="editTaskInput" placeholder="任务内容">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>类别</label>
+                        <div class="custom-select" id="editTaskCategoryWrapper">
+                            <button type="button" class="custom-select-trigger">
+                                <span class="custom-select-value">工作</span>
+                                <i data-lucide="chevron-down"></i>
+                            </button>
+                            <div class="custom-select-dropdown">
+                                <div class="custom-select-option" data-value="work" data-color="#C45A4A">工作</div>
+                                <div class="custom-select-option" data-value="study" data-color="#4A8A4D">学习</div>
+                                <div class="custom-select-option" data-value="health" data-color="#B08A4A">健康</div>
+                                <div class="custom-select-option" data-value="sports" data-color="#3D7A4D">运动</div>
+                                <div class="custom-select-option" data-value="life" data-color="#5A8A5A">生活</div>
+                                <div class="custom-select-option" data-value="writing" data-color="#7A68AB">写作</div>
+                                <div class="custom-select-option" data-value="future" data-color="#4A8A8A">未来</div>
+                                <div class="custom-select-option" data-value="rest" data-color="#6A9A6A">休息</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>优先级</label>
+                        <div class="custom-select" id="editTaskPriorityWrapper">
+                            <button type="button" class="custom-select-trigger">
+                                <span class="custom-select-value">中</span>
+                                <i data-lucide="chevron-down"></i>
+                            </button>
+                            <div class="custom-select-dropdown">
+                                <div class="custom-select-option" data-value="p1" data-color="#C45A4A">高</div>
+                                <div class="custom-select-option" data-value="p2" data-color="#B08A4A">中</div>
+                                <div class="custom-select-option" data-value="p3" data-color="#4A8A4D">低</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="editTaskCancelBtn">取消</button>
+                <button class="btn btn-primary" id="editTaskSaveBtn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification-toast" id="notificationToast">
+        <div class="toast-content">
+            <i data-lucide="bell-ring"></i>
+            <span id="toastMessage">时间到！</span>
+        </div>
+    </div>
+
+    <div class="celebration-overlay" id="celebrationOverlay">
+        <div class="celebration-content">
+            <div class="celebration-tree" id="celebrationTree"></div>
+            <p class="celebration-text" id="celebrationText">新成就解锁！</p>
+        </div>
+    </div>
+
+    <!-- 成就解锁通知 -->
+    <div class="achievement-notification" id="achievementNotification">
+        <div class="achievement-notif-icon">
+            <i data-lucide="award"></i>
+        </div>
+        <div class="achievement-notif-content">
+            <div class="achievement-notif-badge">成就解锁</div>
+            <div class="achievement-notif-name" id="achievementNotifName"></div>
+        </div>
+        <div class="achievement-notif-glow"></div>
+    </div>
+
+    <script src="scripts/storage.js"></script>
+    <script src="scripts/firebase.js"></script>
+    <script src="scripts/cloudstore.js"></script>
+    <script src="scripts/timer.js"></script>
+    <script src="scripts/todos.js"></script>
+    <script src="scripts/stats.js"></script>
+    <script src="scripts/gallery.js"></script>
+    <script src="scripts/music.js"></script>
+    <script src="scripts/app.js"></script>
+
+    <div class="music-player-modal" id="musicPlayerModal">
+        <div class="music-player-content">
+            <div class="music-player-header">
+                <span class="music-player-title">专注音乐</span>
+                <button class="music-player-close" id="musicPlayerClose">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="music-current-track" id="musicCurrentTrack">
+                <span class="music-track-name">选择一首歌开始播放</span>
+            </div>
+            <div class="music-player-controls">
+                <button class="music-control-btn" id="musicPrevBtn" title="上一首">
+                    <i data-lucide="skip-back"></i>
+                </button>
+                <button class="music-control-btn music-play-btn" id="musicPlayPauseBtn" title="播放/暂停">
+                    <i data-lucide="play" id="musicPlayIcon"></i>
+                    <i data-lucide="pause" id="musicPauseIcon" class="hidden"></i>
+                </button>
+                <button class="music-control-btn" id="musicNextBtn" title="下一首">
+                    <i data-lucide="skip-forward"></i>
+                </button>
+            </div>
+            <div class="music-mode-controls">
+                <button class="music-mode-btn active" id="musicRepeatOneBtn" title="单曲循环">
+                    <i data-lucide="repeat-1"></i>
+                </button>
+                <button class="music-mode-btn" id="musicShuffleBtn" title="随机播放">
+                    <i data-lucide="shuffle"></i>
+                </button>
+            </div>
+            <div class="music-volume-control">
+                <i data-lucide="volume-2" class="volume-icon"></i>
+                <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="70">
+                <span class="volume-value" id="volumeValue">70%</span>
+            </div>
+            <div class="music-playlist-toggle" id="musicPlaylistToggle">
+                <span>播放列表</span>
+                <i data-lucide="chevron-down" id="playlistChevron"></i>
+            </div>
+            <div class="music-playlist" id="musicPlaylist"></div>
+        </div>
+    </div>
+</body>
+</html>
