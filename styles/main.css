@@ -1650,6 +1650,25 @@ body {
     background: linear-gradient(135deg, rgba(74, 124, 89, 0.05), transparent);
 }
 
+.overdue-badge {
+    background: linear-gradient(135deg, #C45A4A, #E07060);
+    color: white;
+    padding: 4px 10px;
+    font-size: 0.6875rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.task-item.overdue-item {
+    border-left: 3px solid #C45A4A;
+    background: linear-gradient(135deg, rgba(196, 90, 74, 0.05), transparent);
+}
+
+.task-item.overdue-item .task-title {
+    color: #C45A4A;
+}
+
 .task-category {
     padding: 2px 8px;
     border-radius: var(--radius-full);
