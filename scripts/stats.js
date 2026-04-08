@@ -184,9 +184,8 @@ const Stats = {
         if (focusTimeEl) focusTimeEl.textContent = this.formatTime(data.totalFocusTime);
         if (tasksEl) tasksEl.textContent = data.tasksCompleted;
 
-        const days = period === 'day' ? 1 : period === 'week' ? 7 : period === 'month' ? 30 : 365;
-        const avg = Math.round(data.tomatoes / days * 10) / 10;
-        if (avgEl) avgEl.textContent = avg;
+        const overdueCount = Todos.getOverdueCount();
+        if (avgEl) avgEl.textContent = overdueCount;
 
         const comparison = this.getComparison(period);
         if (trendEl && comparison) {

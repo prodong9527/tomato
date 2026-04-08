@@ -102,10 +102,15 @@ const Todos = {
     },
 
     remove(id) {
+        const todo = this.getById(id);
+        if (todo && this.isOverdue(todo)) {
+            return false;
+        }
         this.todos = this.todos.filter(t => t.id !== id);
         Storage.saveTodos(this.todos);
         this.render();
         App.updateTaskLinkSelect();
+        return true;
     },
 
     getById(id) {
@@ -125,7 +130,11 @@ const Todos = {
             if (t.completedAt) return false;
 
             if (this.currentDateFilter === 'today') {
-                return t.targetDate === today || (!t.targetDate && !t.isMonthly);
+                // 显示今天待办 + 已逾期未完成任务
+                if (t.targetDate === today || (!t.targetDate && !t.isMonthly)) return true;
+                // 已逾期任务（targetDate 存在且小于今天，且不是每周/每月目标）
+                if (t.targetDate && t.targetDate < today && t.targetDate !== 'week' && !t.isMonthly) return true;
+                return false;
             } else if (this.currentDateFilter === 'tomorrow') {
                 return t.targetDate === tomorrow;
             } else if (this.currentDateFilter === 'week') {
@@ -143,6 +152,10 @@ const Todos = {
             return true;
         }).sort((a, b) => {
             const priorityOrder = { p1: 0, p2: 1, p3: 2 };
+            // 已逾期任务排在后面
+            const aOverdue = a.targetDate && a.targetDate < today && a.targetDate !== 'week' && !a.isMonthly;
+            const bOverdue = b.targetDate && b.targetDate < today && b.targetDate !== 'week' && !b.isMonthly;
+            if (aOverdue !== bOverdue) return aOverdue ? 1 : -1;
             return priorityOrder[a.priority] - priorityOrder[b.priority];
         });
     },
@@ -181,6 +194,21 @@ const Todos = {
             const completedDate = new Date(t.completedAt).toISOString().split('T')[0];
             return completedDate === dateStr;
         });
+    },
+
+    getOverdueCount() {
+        const today = this.getDateString(new Date());
+        return this.todos.filter(t => {
+            if (t.completedAt) return false;
+            // 已逾期：targetDate 存在且小于今天，且不是每周/每月目标
+            if (t.isMonthly) return false;
+            return t.targetDate && t.targetDate < today && t.targetDate !== 'week';
+        }).length;
+    },
+
+    isOverdue(todo) {
+        const today = this.getDateString(new Date());
+        return todo.targetDate && todo.targetDate < today && todo.targetDate !== 'week' && !todo.isMonthly;
     },
 
     render() {
@@ -352,15 +380,17 @@ const Todos = {
             hour: '2-digit',
             minute: '2-digit'
         });
+        const isOverdue = this.isOverdue(todo);
 
         return `
-            <div class="task-item ${todo.isMonthly ? 'monthly-item' : ''}" data-id="${todo.id}">
+            <div class="task-item ${todo.isMonthly ? 'monthly-item' : ''} ${isOverdue ? 'overdue-item' : ''}" data-id="${todo.id}">
                 <div class="task-checkbox" data-id="${todo.id}">
                     <i data-lucide="check"></i>
                 </div>
                 <div class="task-content">
                     <div class="task-title">${this.escapeHtml(todo.content)}</div>
                     <div class="task-meta">
+                        ${isOverdue ? `<span class="task-badge overdue-badge"><span class="badge-star">&#9888;</span>已逾期</span>` : ''}
                         ${todo.isMonthly ? `<span class="task-badge monthly-badge"><span class="badge-star">&#9733;</span>每月目标</span>` : `<span class="task-category" style="background: ${category.color}15; color: ${category.color};">${category.name}</span>`}
                         ${todo.isMonthly ? '' : `<span class="task-priority ${todo.priority}">${todo.priority === 'p1' ? '高' : todo.priority === 'p2' ? '中' : '低'}</span>`}
                         <span>${date}</span>
@@ -370,9 +400,9 @@ const Todos = {
                     <button class="task-action-btn edit" data-id="${todo.id}" title="编辑">
                         <i data-lucide="pencil"></i>
                     </button>
-                    <button class="task-action-btn delete" data-id="${todo.id}" title="删除">
+                    ${isOverdue ? '' : `<button class="task-action-btn delete" data-id="${todo.id}" title="删除">
                         <i data-lucide="trash-2"></i>
-                    </button>
+                    </button>`}
                 </div>
             </div>
         `;
