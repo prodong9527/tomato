@@ -139,10 +139,20 @@ const Todos = {
                 return t.targetDate === tomorrow;
             } else if (this.currentDateFilter === 'week') {
                 if (t.targetDate === 'week') return true;
-                if (!t.targetDate && !t.isMonthly) {
-                    const todoDate = new Date(t.targetDate);
-                    return todoDate >= weekStart && todoDate <= weekEnd;
+                if (t.targetDate && t.targetDate !== 'week') {
+                    // 具体日期，检查是否在本周范围内（周日到周六）
+                    const todoDateStr = t.targetDate;
+                    const weekStartStr = this.getDateString(weekStart);
+                    const weekEndStr = this.getDateString(weekEnd);
+                    // 任务日期在本周日历周期内，或者任务日期是今天及以后
+                    if (todoDateStr >= weekStartStr && todoDateStr <= weekEndStr) return true;
+                    // 如果任务日期在明天及以后，且今天是周日，则属于下周
+                    if (todoDateStr > today && now.getDay() === 0) return false;
+                    // 今天及以后的任务显示在本周
+                    if (todoDateStr >= today) return true;
+                    return false;
                 }
+                if (!t.isMonthly) return true;
                 return false;
             } else if (this.currentDateFilter === 'monthly') {
                 return t.isMonthly;

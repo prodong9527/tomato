@@ -144,6 +144,92 @@ const Stats = {
         return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
     },
 
+    getOverdueCountForPeriod(period) {
+        const today = new Date();
+        const todayStr = this.getDateString(today);
+
+        // 获取该周期内的时间范围
+        let startDate, endDate;
+        if (period === 'day') {
+            startDate = todayStr;
+            endDate = todayStr;
+        } else if (period === 'week') {
+            startDate = new Date(today);
+            startDate.setDate(today.getDate() - today.getDay());
+            startDate = this.getDateString(startDate);
+            endDate = new Date(today);
+            endDate.setDate(today.getDate() + (6 - today.getDay()));
+            endDate = this.getDateString(endDate);
+        } else if (period === 'month') {
+            startDate = this.getDateString(new Date(today.getFullYear(), today.getMonth(), 1));
+            endDate = this.getDateString(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+        } else if (period === 'year') {
+            startDate = `${today.getFullYear()}-01-01`;
+            endDate = `${today.getFullYear()}-12-31`;
+        } else {
+            startDate = todayStr;
+            endDate = todayStr;
+        }
+
+        // 统计在该周期内已逾期但未完成的任务
+        return Todos.todos.filter(t => {
+            if (t.completedAt) return false;
+            if (t.isMonthly) return false;
+            if (!t.targetDate || t.targetDate === 'week') return false;
+            // 任务的目标日期在该周期内且已逾期
+            return t.targetDate >= startDate && t.targetDate <= endDate && t.targetDate < todayStr;
+        }).length;
+    },
+
+    getDateString(date) {
+        return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+    },
+
+    getCategoryStatsForPeriod(period) {
+        const stats = { work: 0, study: 0, health: 0, sports: 0, life: 0, writing: 0, future: 0, rest: 0 };
+
+        const today = new Date();
+        const todayStr = this.getDateString(today);
+
+        // 获取该周期内的时间范围
+        let startDate, endDate;
+        if (period === 'day') {
+            startDate = todayStr;
+            endDate = todayStr;
+        } else if (period === 'week') {
+            startDate = new Date(today);
+            startDate.setDate(today.getDate() - today.getDay());
+            startDate = this.getDateString(startDate);
+            endDate = new Date(today);
+            endDate.setDate(today.getDate() + (6 - today.getDay()));
+            endDate = this.getDateString(endDate);
+        } else if (period === 'month') {
+            startDate = this.getDateString(new Date(today.getFullYear(), today.getMonth(), 1));
+            endDate = this.getDateString(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+        } else if (period === 'year') {
+            startDate = `${today.getFullYear()}-01-01`;
+            endDate = `${today.getFullYear()}-12-31`;
+        } else {
+            startDate = todayStr;
+            endDate = todayStr;
+        }
+
+        // 过滤在该周期内完成的任务
+        Todos.todos.filter(t => {
+            if (!t.completedAt) return false;
+            const completedDate = new Date(t.completedAt).toISOString().split('T')[0];
+            return completedDate >= startDate && completedDate <= endDate;
+        }).forEach(t => {
+            if (stats[t.category] !== undefined) {
+                stats[t.category]++;
+            } else {
+                stats.work++;
+            }
+        });
+
+        return stats;
+    },
+
     changeCalendarMonth(delta) {
         this.calendarMonthOffset += delta;
         this.renderCalendar();
@@ -184,7 +270,7 @@ const Stats = {
         if (focusTimeEl) focusTimeEl.textContent = this.formatTime(data.totalFocusTime);
         if (tasksEl) tasksEl.textContent = data.tasksCompleted;
 
-        const overdueCount = Todos.getOverdueCount();
+        const overdueCount = this.getOverdueCountForPeriod(period);
         if (avgEl) avgEl.textContent = overdueCount;
 
         const comparison = this.getComparison(period);
@@ -285,7 +371,7 @@ const Stats = {
         const container = document.getElementById('pieChart');
         if (!container) return;
 
-        const categoryStats = Todos.getStats();
+        const categoryStats = this.getCategoryStatsForPeriod(period);
         const categories = Todos.CATEGORIES;
 
         const total = Object.values(categoryStats).reduce((sum, val) => sum + val, 0);
