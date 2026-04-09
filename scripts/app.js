@@ -416,11 +416,14 @@ const App = {
 
         document.getElementById('todoList')?.classList.toggle('hidden', tab !== 'todo');
         document.getElementById('doneList')?.classList.toggle('hidden', tab !== 'done');
+        document.getElementById('monthlyList')?.classList.toggle('hidden', tab !== 'monthly');
 
         if (tab === 'todo') {
             Todos.renderTodoList();
-        } else {
+        } else if (tab === 'done') {
             Todos.renderDoneList();
+        } else if (tab === 'monthly') {
+            Todos.renderMonthlyList();
         }
     },
 
